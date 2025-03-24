@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, Response
+from flask import Flask, request, stream_with_context, Response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
@@ -25,25 +25,27 @@ MAX_FILE_SIZE = 1024 * 1024
 # API
 @app.route('/', methods=["POST"])
 def receive_csv():
+  status_code = 200
+  if 'csv-file' not in request.files.keys():
+    status_code = 400
+    return "No file uploaded"
+  file = request.files['csv-file']
+
+  if file.mimetype != 'text/csv':
+    status_code = 400    
+    return 'Non csv files are not allowed'
+  if file.content_length > MAX_FILE_SIZE:
+    status_code = 400
+    return 'File bigger than 1MB'
+  if file.filename == '':
+    status_code = 400
+    return 'No selected file'
+  if not file.filename.endswith('.csv'):
+    status_code = 400
+    return 'Only CSV files are allowed'
+  
   def generate():
-    if 'csv-file' not in request.files.keys():
-      return "No file uploaded", 400
-
-    file = request.files['csv-file']
-
-    if file.mimetype != 'text/csv':
-      return 'Non csv files are not allowed', 400
-    
-    if file.content_length > MAX_FILE_SIZE:
-      return 'File bigger than 1MB', 400
-
-    if file.filename == '':
-      return 'No selected file', 400
-
-    if not file.filename.endswith('.csv'):
-      return 'Only CSV files are allowed', 400
-
-
+    nonlocal status_code
     file_content = file.read().decode('utf-8', errors='ignore').replace('\r\n', '\n')
     yield 'Security check...'
 
@@ -58,7 +60,9 @@ def receive_csv():
           line += file_content[i]
     
     if len(first_3_rows) <= 1:
-      return "Empty dataset", 400
+      yield "Empty dataset"
+      status_code = 400
+      return
 
     head_and_data = "\n".join(first_3_rows)
 
@@ -74,13 +78,15 @@ def receive_csv():
         contents=security_check_prompt,
       )
     except:
-      return f"Security check server error", 500
-
+      yield f"Security check server error"
+      status_code = 500
+      return
     security_check_result = security_check_response.text.split(" ")[0].lower()
 
     if "Unsafe" in security_check_result:
-      return "Hacking attempt detected", 403
-    
+      yield "Hacking attempt detected"
+      status_code = 403
+      return    
     yield 'Generating graphs layout...'
 
     print("SAFETY CHECK PASSED!")
@@ -97,21 +103,27 @@ def receive_csv():
         contents=graph_generation_prompt,
       )
     except:
-      return "Graph layout generation error", 500
-    
+      yield "Graph layout generation error"
+      status_code = 500
+      return    
     print("GRAPHS GENERATED!")
 
     try:
       json_start_index = graph_generation_response.text.index('```json')+7
       json_end_index = graph_generation_response.text[json_start_index:].index('```')+json_start_index
     except:
-      return 'Error parsing data, please try again', 500
-
+      yield 'Error parsing data, please try again'
+      status_code = 500
+      return
     result = graph_generation_response.text[json_start_index:json_end_index]
 
-    return result, 200
-  return Response(generate(), content_type='text/plain', status=200)
-
+    yield result
+    return
+  return Response(
+        stream_with_context(generate()),
+        mimetype='text/plain',
+        headers={'X-Accel-Buffering': 'no'}
+    )
 @app.errorhandler(429)
 def rate_limit_exceeded(e):
   return 'You can only upload files every 30s', 429
