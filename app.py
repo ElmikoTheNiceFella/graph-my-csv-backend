@@ -4,7 +4,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 from google import genai
-
+from flask_cors import CORS
 # Configurations
 script_dir = os.path.dirname(os.path.abspath(__file__))
 dotenv_path = os.path.join(script_dir, '.env')
@@ -19,33 +19,29 @@ limiter = Limiter(
   storage_options={"socket_connect_timeout": 30},
   strategy="moving-window"
 )
+CORS(app)
 
 MAX_FILE_SIZE = 1024 * 1024
 
 # API
 @app.route('/', methods=["POST"])
 def receive_csv():
-  status_code = 200
   if 'csv-file' not in request.files.keys():
-    status_code = 400
-    return "No file uploaded"
+    return "No file uploaded", 400
   file = request.files['csv-file']
 
-  if file.mimetype != 'text/csv':
-    status_code = 400    
-    return 'Non csv files are not allowed'
+  if file.mimetype != 'text/csv':    
+    return 'Non csv files are not allowed', 400
+  if file.content_length == 0:
+    return 'Empty file', 400
   if file.content_length > MAX_FILE_SIZE:
-    status_code = 400
-    return 'File bigger than 1MB'
+    return 'File bigger than 1MB', 400
   if file.filename == '':
-    status_code = 400
-    return 'No selected file'
+    return 'No selected file', 400
   if not file.filename.endswith('.csv'):
-    status_code = 400
-    return 'Only CSV files are allowed'
+    return 'Only CSV files are allowed', 400
   
   def generate():
-    nonlocal status_code
     file_content = file.read().decode('utf-8', errors='ignore').replace('\r\n', '\n')
     yield 'Security check...'
 
@@ -60,8 +56,7 @@ def receive_csv():
           line += file_content[i]
     
     if len(first_3_rows) <= 1:
-      yield "Empty dataset"
-      status_code = 400
+      yield "ERROR_Empty dataset_400"
       return
 
     head_and_data = "\n".join(first_3_rows)
@@ -78,14 +73,12 @@ def receive_csv():
         contents=security_check_prompt,
       )
     except:
-      yield f"Security check server error"
-      status_code = 500
+      yield f"ERROR_Security check server error, please try again_500"
       return
     security_check_result = security_check_response.text.split(" ")[0].lower()
 
     if "Unsafe" in security_check_result:
-      yield "Hacking attempt detected"
-      status_code = 403
+      yield "ERROR_Hacking attempt detected_403"
       return    
     yield 'Generating graphs layout...'
 
@@ -94,7 +87,7 @@ def receive_csv():
     graph_generation_format = "[{ graph: type (ie pie char, bar chart, etc), y-axis: \"the column\", x-axis: \"relative column or frequency\" }, ... other columns]"
     sample_data = first_3_rows[1:]
     
-    graph_generation_prompt = f"given the following table head:\n{data_head}\nI want you to give me all possible graphs to visualize the data in this json format: {graph_generation_format}\nsample data:\n{sample_data}"
+    graph_generation_prompt = f"given the following table head:\n{data_head}\nFirst identify whether the columns are represent qualitative or quantitative data, based on that give me all possible appropriate graphs strictly in this json format: {graph_generation_format}\nsample data:\n{sample_data}"
 
     try:
       print("GENERATING...")
@@ -103,27 +96,24 @@ def receive_csv():
         contents=graph_generation_prompt,
       )
     except:
-      yield "Graph layout generation error"
-      status_code = 500
+      yield 'ERROR_Graph layout generation error_500'
       return    
     print("GRAPHS GENERATED!")
 
     try:
-      json_start_index = graph_generation_response.text.index('```json')+7
-      json_end_index = graph_generation_response.text[json_start_index:].index('```')+json_start_index
+      result = graph_generation_response.text.split("```json")[1].split("```")[0]
     except:
-      yield 'Error parsing data, please try again'
-      status_code = 500
+      yield 'ERROR_Error parsing data, please try again_500'
       return
-    result = graph_generation_response.text[json_start_index:json_end_index]
-
     yield result
     return
-  return Response(
-        stream_with_context(generate()),
-        mimetype='text/plain',
-        headers={'X-Accel-Buffering': 'no'}
-    )
+  
+  return Response(stream_with_context(generate()),
+                  mimetype='text/plain',
+                  headers={'X-Accel-Buffering': 'no'},
+                  status=200)
+                  
+
 @app.errorhandler(429)
 def rate_limit_exceeded(e):
   return 'You can only upload files every 30s', 429
