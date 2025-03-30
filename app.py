@@ -84,7 +84,7 @@ def receive_csv():
 
     print("SAFETY CHECK PASSED!")
     data_head = first_3_rows[0]
-    graph_generation_format = "[{ graph: type (ie pie char, bar chart, etc), y-axis: \"the column\", x-axis: \"relative column or frequency\" }, ... other columns]"
+    graph_generation_format = "[{ graph: strictly one of these types (pie, bar, line, scatterplot, or histogram), y-axis: \"the column\", x-axis: \"relative column or frequency\", relationship: explains the relationship }, ... other columns]"
     sample_data = first_3_rows[1:]
     
     graph_generation_prompt = f"given the following table head:\n{data_head}\nFirst identify whether the columns are represent qualitative or quantitative data, based on that give me all possible appropriate graphs strictly in this json format: {graph_generation_format}\nsample data:\n{sample_data}"
