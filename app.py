@@ -84,7 +84,7 @@ def receive_csv():
 
     print("SAFETY CHECK PASSED!")
     data_head = six_random_rows[0]
-    graph_generation_format = "[{ graph: strictly one of these types (bar, line, scatterplot, or histogram), x-axis: \"column\", y-axis: \"related column or frequency\",  relationship: explains the relationship, time-format: in d3.timeParse argument format (e.g. 13-01-2015 is %d.%m.%Y) only add this property if its a line chart }, ... other columns]"
+    graph_generation_format = "[{ graph: strictly one of these types (bar, line, scatterplot, or histogram), x-axis: \"column\" from the dataset, y-axis: \"the related column from the dataset for line plots & scatterplots or frequency for histogram plots and bar plots\",  relationship: explains the relationship, time-format: in d3.timeParse argument format (e.g. 13-01-2015 is %d.%m.%Y) only if its a line chart else set it to null }, ... other columns], note that frequency is only for histogram and bar charts"
     sample_data = six_random_rows[1:]
     
     graph_generation_prompt = f"given the following table head:\n{data_head}\nFirst identify the context of data, then whether the columns represent qualitative or quantitative data, then give me all possible logical graphs strictly in this json format: {graph_generation_format}\nsample data:\n{sample_data}"
