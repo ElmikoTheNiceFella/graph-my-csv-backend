@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, stream_with_context, Response
+from flask import Flask, jsonify, request, stream_with_context, Response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
@@ -24,9 +24,15 @@ limiter = Limiter(
 
 CORS(app, origins=['https://graph-my-csv.netlify.app/'])
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
-CSRFProtect(app)
+csrf = CSRFProtect(app)
 
 MAX_FILE_SIZE = 1024 * 1024
+
+# CSRF token generation
+@app.route('/csrf-token', methods=['GET'])
+def get_csrf():
+  token = csrf.generate_csrf()
+  return jsonify({'csrf_token': token})
 
 # API
 @app.route('/', methods=["POST"])
