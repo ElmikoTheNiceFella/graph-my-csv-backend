@@ -22,7 +22,8 @@ limiter = Limiter(
   strategy="moving-window"
 )
 
-CORS(app)
+CORS(app, origins=['https://graph-my-csv.netlify.app/'])
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
 CSRFProtect(app)
 
 MAX_FILE_SIZE = 1024 * 1024
