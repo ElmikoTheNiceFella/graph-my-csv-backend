@@ -4,6 +4,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 from google import genai
+from flask_wtf import CSRFProtect
 from flask_cors import CORS
 import random
 # Configurations
@@ -20,7 +21,9 @@ limiter = Limiter(
   storage_options={"socket_connect_timeout": 30},
   strategy="moving-window"
 )
-CORS(app)
+
+CORS(app, origins=['https://graph-my-csv.netlify.app/'])
+CSRFProtect(app)
 
 MAX_FILE_SIZE = 1024 * 1024
 
