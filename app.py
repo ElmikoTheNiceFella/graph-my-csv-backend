@@ -4,7 +4,6 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 from google import genai
-from flask_wtf import CSRFProtect
 from flask_cors import CORS
 import random
 # Configurations
@@ -16,26 +15,18 @@ app.config.from_prefixed_env()
 limiter = Limiter(
   get_remote_address,
   app=app,
-  default_limits=["75 per day", "30 per hour"],
+  default_limits=["1000 per day", "1000 per hour"], # 75, 30
   storage_uri=os.getenv('FLASK_REDIS_KEY'),
   storage_options={"socket_connect_timeout": 30},
   strategy="moving-window"
 )
-
-CORS(app, origins=['https://graph-my-csv.netlify.app/'])
-app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
-csrf = CSRFProtect(app)
+print(os.getenv('FLASK_FRONTEND'))
+CORS(app)
 
 MAX_FILE_SIZE = 1024 * 1024
 
-# CSRF token generation
-@app.route('/csrf-token', methods=['GET'])
-def get_csrf():
-  token = csrf.generate_csrf()
-  return jsonify({'csrf_token': token})
-
 # API
-@app.route('/', methods=["POST"])
+@app.route('/', methods=['POST', 'OPTIONS'])
 def receive_csv():
   if 'csv-file' not in request.files.keys():
     return "No file uploaded", 400
