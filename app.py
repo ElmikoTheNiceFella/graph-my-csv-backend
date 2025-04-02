@@ -15,7 +15,7 @@ app.config.from_prefixed_env()
 limiter = Limiter(
   get_remote_address,
   app=app,
-  default_limits=["1000 per day", "1000 per hour"], # 75, 30
+  default_limits=["75 per day", "30 per hour"], # 75, 30
   storage_uri=os.getenv('FLASK_REDIS_KEY'),
   storage_options={"socket_connect_timeout": 30},
   strategy="moving-window"
