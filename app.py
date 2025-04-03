@@ -29,17 +29,17 @@ MAX_FILE_SIZE = 1024 * 1024
 @app.route('/', methods=['POST', 'OPTIONS'])
 def receive_csv():
   if 'csv-file' not in request.files.keys():
-    return "No file uploaded", 400
+    return 'ERROR_No file uploaded_400', 400
   file = request.files['csv-file']
 
   if file.mimetype != 'text/csv':    
-    return 'Non csv files are not allowed', 400
+    return 'ERROR_Non csv files are not allowed_400', 400
   if request.content_length > MAX_FILE_SIZE:
-    return 'File bigger than 1MB', 400
+    return 'ERROR_File bigger than 1MB_400', 400
   if file.filename == '':
-    return 'No selected file', 400
+    return 'ERROR_No selected file_400', 400
   if not file.filename.endswith('.csv'):
-    return 'Only CSV files are allowed', 400
+    return 'ERROR_Only CSV files are allowed_400', 400
   
   def generate():
     try:
