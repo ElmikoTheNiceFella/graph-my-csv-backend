@@ -25,6 +25,10 @@ CORS(app)
 
 MAX_FILE_SIZE = 1024 * 1024
 
+@app.route('/ping', methods=['GET'])
+def ping():
+  print("Pinged")
+
 # API
 @app.route('/', methods=['POST', 'OPTIONS'])
 def receive_csv():
