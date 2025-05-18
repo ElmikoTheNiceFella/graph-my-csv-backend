@@ -27,7 +27,7 @@ MAX_FILE_SIZE = 1024 * 1024
 
 @app.route('/ping', methods=['GET'])
 def ping():
-  print("Pinged")
+  return "Pinged"
 
 # API
 @app.route('/', methods=['POST', 'OPTIONS'])
